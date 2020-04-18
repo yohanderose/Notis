@@ -20,14 +20,11 @@ export default class App extends Component {
   constructor(props) {
     super(props);
 
-    this.state = { data: {} };
-
-    // this._pullDataServerAPI();
-
+    this.state = { data: {}, closes: [], units: 37, purchasedAt: 21.6041 };
     this._testing1();
   }
 
-  _testing1 = () => {
+  _testing1 = async () => {
     try {
       Storage.getItem("temp_data").then((data) => {
         this.setState({ data: data }, () => {
@@ -40,7 +37,27 @@ export default class App extends Component {
   };
 
   _testing2 = () => {
-    console.log(this.state.data);
+    let data = Array(this.state.data["Time Series (5min)"])["0"];
+    // console.log(data);
+    let closes = [];
+    let labels = [];
+    Object.keys(data).forEach((index) => {
+      // console.log(data[index]["4. close"]);
+      labels.unshift(index);
+      closes.unshift(parseFloat(data[index]["4. close"]));
+    });
+    this.setState({ closes });
+
+    let currentPrice = closes[closes.length - 1];
+    let currentTotal = currentPrice * this.state.units;
+    let prevTotal = this.state.units * this.state.purchasedAt;
+    let diff = currentTotal - prevTotal;
+    diff = Math.round((diff + Number.EPSILON) * 100) / 100;
+    let diffpercent =
+      Math.round(
+        ((currentTotal / prevTotal - 1) * 100 + Number.EPSILON) * 100
+      ) / 100;
+    console.log(diff.toString(), "(" + diffpercent.toString() + ")");
   };
 
   _pullDataServerAPI = () => {
@@ -63,7 +80,49 @@ export default class App extends Component {
   };
 
   render = () => {
-    return <View style={styles.container}></View>;
+    return (
+      <View style={styles.container}>
+        <LineChart
+          data={{
+            datasets: [
+              {
+                data: this.state.closes,
+              },
+            ],
+          }}
+          width={width} // from react-native
+          height={220}
+          // yAxisLabel="$"
+          // yAxisSuffix="k"
+          yAxisInterval={1} // optional, defaults to 1
+          getDotProps={(value, index) => {
+            let result = {
+              r: "0",
+              strokeWidth: "0",
+              stroke: "#ffa726",
+            };
+
+            if (index == this.state.closes.length - 1) {
+              result.r = "8";
+            }
+            return result;
+          }}
+          chartConfig={{
+            backgroundColor: "#6D7FB3",
+            backgroundGradientFrom: "#6D7FB3",
+            backgroundGradientTo: "#6D7FB3",
+            decimalPlaces: 2, // optional, defaults to 2dp
+            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+            // style: {
+            //   alignContent: "center",
+            //   margin: width * 0.02,
+            // },
+          }}
+          bezier
+        />
+      </View>
+    );
   };
 }
 
