@@ -1,51 +1,24 @@
 import React, { Component } from "react";
+import { createSwitchNavigator, createAppContainer } from "react-navigation";
 
-import { Ionicons } from "@expo/vector-icons";
+import LoadingScreen from "./screens/LoadingScreen";
+import LoginScreen from "./screens/LoginScreen";
+import DashboardScreen from "./screens/DashboardScreen";
 
-import {
-  Text,
-  View,
-  TextInput,
-  Dimensions,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-} from "react-native";
-
-import Card from "./components/card";
+import * as firebase from "firebase";
+import { firebaseConfig } from "./config";
+firebase.initializeApp(firebaseConfig);
 
 export default class App extends Component {
-  constructor(props) {
-    super(props);
-    this.data = [{ symbol: "ASX:NDQ", units: 37, purchasedAt: 21.6041 }];
-  }
-
   render = () => {
-    return (
-      <View style={styles.container}>
-        <FlatList
-          data={this.data}
-          renderItem={({ item }) => (
-            <Card
-              symbol={item.symbol}
-              units={item.units}
-              purchasedAt={item.purchasedAt}
-            ></Card>
-          )}
-          keyExtractor={(item) => item.symbol}
-        />
-      </View>
-    );
+    return <AppNavigator></AppNavigator>;
   };
 }
 
-const { width, height } = Dimensions.get("window");
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+const AppSwitchNavigator = createSwitchNavigator({
+  LoadingScreen: LoadingScreen,
+  LoginScreen: LoginScreen,
+  DashboardScreen: DashboardScreen,
 });
+
+const AppNavigator = createAppContainer(AppSwitchNavigator);

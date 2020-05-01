@@ -1,14 +1,21 @@
 import React, { Component } from "react";
 
-import { Ionicons } from "@expo/vector-icons";
-
 import {
   Text,
   View,
   Dimensions,
   StyleSheet,
   TouchableOpacity,
+  Button,
+  Vibration,
+  Platform,
 } from "react-native";
+
+import { Ionicons } from "@expo/vector-icons";
+
+import { Notifications } from "expo";
+import * as Permissions from "expo-permissions";
+import Constants from "expo-constants";
 
 import Storage from "./storage";
 
@@ -26,6 +33,9 @@ export default class Card extends Component {
       prevTotal: 0,
       diff: 0,
       diffPercent: 0,
+      // Notification stuff
+      expoPushToken: "",
+      notification: {},
     };
 
     this._updateData();
@@ -33,6 +43,11 @@ export default class Card extends Component {
 
   componentDidMount() {
     this.interval = setInterval(() => this._updateData(), 30000);
+
+    this.registerForPushNotificationsAsync();
+    this._notificationSubscription = Notifications.addListener(
+      this._handleNotification
+    );
   }
 
   componentWillUnmount() {
@@ -49,7 +64,7 @@ export default class Card extends Component {
             });
           })
           .then(() => {
-            console.log(this.state);
+            // console.log(this.state);
           });
       } catch (error) {
         console.log(error);
@@ -71,59 +86,143 @@ export default class Card extends Component {
         return response.json();
       })
       .then((data) => {
-        if (Object.keys(data)[0] == "Meta Data") {
-          console.log(data);
+        try {
+          console.log("Data retrieved from AlphaVantage");
           Storage.setItem("temp_data", data);
-        } else {
-          console.error("Could not retrieve stock info at this time.");
+        } catch (error) {
+          console.error("Could not retrieve stock info at this time...");
+          console.log(error);
         }
       });
   };
 
-  _getCurrentValue = () => {
+  _getCurrentValue = async () => {
     // TODO: Pull down and update closes instead of temp data
-    let data = Array(this.state.data["Time Series (5min)"])["0"];
-    // console.log(data);
-    let closes = [];
-    let labels = [];
-    Object.keys(data).forEach((index) => {
-      // console.log(data[index]["4. close"]);
-      labels.unshift(index);
-      closes.unshift(parseFloat(data[index]["4. close"]));
-    });
-    this.setState({ closes });
+    try {
+      let data = Array(this.state.data["Time Series (5min)"])["0"];
+      // console.log(data);
+      let closes = [];
+      let labels = [];
+      Object.keys(data).forEach((index) => {
+        // console.log(data[index]["4. close"]);
+        labels.unshift(index);
+        closes.unshift(parseFloat(data[index]["4. close"]));
+      });
+      this.setState({ closes });
 
-    let currentTotal =
-      Math.round(
-        (closes[closes.length - 1] * this.state.units + Number.EPSILON) * 100
-      ) / 100;
-    let prevTotal =
-      Math.round(
-        (this.state.units * this.state.purchasedAt + Number.EPSILON) * 100
-      ) / 100;
-    let diff =
-      Math.round((currentTotal - prevTotal + Number.EPSILON) * 100) / 100;
-    let diffPercent =
-      Math.round(
-        ((currentTotal / prevTotal - 1) * 100 + Number.EPSILON) * 100
-      ) / 100;
-    this.setState({ currentTotal, prevTotal, diff, diffPercent });
+      let currentTotal =
+        Math.round(
+          (closes[closes.length - 1] * this.state.units + Number.EPSILON) * 100
+        ) / 100;
+      let prevTotal =
+        Math.round(
+          (this.state.units * this.state.purchasedAt + Number.EPSILON) * 100
+        ) / 100;
+      let diff =
+        Math.round((currentTotal - prevTotal + Number.EPSILON) * 100) / 100;
+      let diffPercent =
+        Math.round(
+          ((currentTotal / prevTotal - 1) * 100 + Number.EPSILON) * 100
+        ) / 100;
+
+      this.setState({ currentTotal, prevTotal, diff, diffPercent }, () => {
+        if (this.state.diffPercent > 5) {
+          this.sendPushNotification();
+        }
+      });
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  registerForPushNotificationsAsync = async () => {
+    if (Constants.isDevice) {
+      const { status: existingStatus } = await Permissions.getAsync(
+        Permissions.NOTIFICATIONS
+      );
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Permissions.askAsync(
+          Permissions.NOTIFICATIONS
+        );
+        finalStatus = status;
+      }
+      if (finalStatus !== "granted") {
+        alert("Failed to get push token for push notification!");
+        return;
+      }
+      token = await Notifications.getExpoPushTokenAsync();
+      // console.log(token);
+      this.setState({ expoPushToken: token });
+    } else {
+      alert("Must use physical device for Push Notifications");
+    }
+
+    if (Platform.OS === "android") {
+      Notifications.createChannelAndroidAsync("default", {
+        name: "default",
+        sound: true,
+        priority: "max",
+        vibrate: [0, 250, 250, 250],
+      });
+    }
+  };
+
+  _handleNotification = (notification) => {
+    Vibration.vibrate();
+    // console.log(notification);
+    this.setState({ notification: notification });
+  };
+
+  sendPushNotification = async () => {
+    const message = {
+      to: this.state.expoPushToken,
+      sound: "default",
+      title: `${this.state.symbol} is up ${this.state.diffPercent}%`,
+      body: "Consider making a trade.",
+      data: { data: "goes here" },
+      _displayInForeground: true,
+    };
+    const response = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(message),
+    });
+
+    console.log("Sending push notification re prospective trade.");
   };
 
   render = () => {
     return (
-      <View style={styles.body}>
-        <View style={styles.row}>
-          <Text style={styles.first}>{this.state.currentTotal}</Text>
-          <Text style={styles.first}>{this.state.symbol}</Text>
+      <View>
+        <View style={styles.body}>
+          <View style={styles.row}>
+            <Text style={styles.first}>{this.state.currentTotal}</Text>
+            <Text style={styles.first}>{this.state.symbol}</Text>
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.second}>{this.state.prevTotal}</Text>
+            <Text style={styles.second}>
+              {this.state.diff} ({this.state.diffPercent}%)
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.row}>
-          <Text style={styles.second}>{this.state.prevTotal}</Text>
-          <Text style={styles.second}>
-            {this.state.diff} ({this.state.diffPercent})
-          </Text>
+        {/* To help in visualising what comes back from notifications */}
+        {/* 
+        <View style={{ alignItems: "center", justifyContent: "center" }}>
+          <Text>Origin: {this.state.notification.origin}</Text>
+          <Text>Data: {JSON.stringify(this.state.notification.data)}</Text>
         </View>
+        <Button
+          title={"Press to Send Notification"}
+          onPress={() => this.sendPushNotification()}
+        /> */}
       </View>
     );
   };
@@ -135,9 +234,9 @@ const styles = StyleSheet.create({
   body: {
     height: height / 7,
     width: width * 0.95,
-    margin: width * 0.05,
     borderRadius: 7,
     backgroundColor: "tomato",
+    marginTop: height / 12,
   },
   row: {
     flex: 1,
