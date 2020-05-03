@@ -1,41 +1,60 @@
 import React, { Component } from "react";
 import { View, Text, StyleSheet, Button } from "react-native";
-import * as GoogleSignIn from "expo-google-sign-in";
+import * as Google from "expo-google-app-auth";
+
+import Storage from "../components/storage";
 
 export default class LoginScreen extends Component {
-  state = { user: null };
-
-  componentDidMount() {
-    this.initAsync();
+  constructor(props) {
+    super(props);
+    this.state = { user: null };
+    this._getUser();
   }
 
-  initAsync = async () => {
-    await GoogleSignIn.initAsync({
-      // You may ommit the clientId when the firebase `googleServicesFile` is configured
-      clientId: "<YOUR_IOS_CLIENT_ID>",
-    });
-    this._syncUserWithStateAsync();
-  };
-
-  _syncUserWithStateAsync = async () => {
-    const user = await GoogleSignIn.signInSilentlyAsync();
-    this.setState({ user });
-  };
-
-  signOutAsync = async () => {
-    await GoogleSignIn.signOutAsync();
-    this.setState({ user: null });
-  };
-
-  signInAsync = async () => {
+  _getUser = async () => {
     try {
-      await GoogleSignIn.askForPlayServicesAsync();
-      const { type, user } = await GoogleSignIn.signInAsync();
-      if (type === "success") {
-        this._syncUserWithStateAsync();
+      let user = await Storage.getItem("user-google");
+      if (user) {
+        this.setState({ user });
       }
-    } catch ({ message }) {
-      alert("Login Error:" + message);
+    } catch (error) {
+      console.log("Error checking if user exists.");
+    }
+  };
+
+  _setUser = async () => {
+    try {
+      Storage.setItem("user-google", this.state.user);
+      console.log("User saved in persistent memory under 'user-google'");
+    } catch (error) {
+      console.log("Error saving user.");
+    }
+  };
+
+  signInWithGoogleAsync = async () => {
+    if (this.state.user == null) {
+      try {
+        const result = await Google.logInAsync({
+          androidClientId:
+            "64796985151-v6k968phmbccfteg3phgvmnqrfvtvhoc.apps.googleusercontent.com",
+          iosClientId:
+            "64796985151-nnqp4mdutcdcs7d22lq3gue1335b4j4o.apps.googleusercontent.com",
+          scopes: ["profile", "email"],
+        });
+
+        if (result.type === "success") {
+          this.setState({ user: result.user }, () => {
+            this._setUser();
+          });
+          // console.log(result);
+        } else {
+          return { cancelled: true };
+        }
+      } catch (e) {
+        return { error: true };
+      }
+    } else {
+      this.props.navigation.navigate("DashboardScreen");
     }
   };
 
@@ -45,11 +64,7 @@ export default class LoginScreen extends Component {
         <Button
           title="Sign in with Google"
           onPress={() => {
-            if (this.state.user) {
-              this.signOutAsync();
-            } else {
-              this.signInAsync();
-            }
+            this.signInWithGoogleAsync();
           }}
         ></Button>
       </View>

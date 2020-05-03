@@ -2,20 +2,33 @@ import React, { Component } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import * as firebase from "firebase";
 
+import Storage from "../components/storage";
+
 export default class LoadingScreen extends Component {
   componentDidMount = () => {
     this.checkIfLoggedIn();
   };
 
-  checkIfLoggedIn = () => {
-    firebase.auth().onAuthStateChanged((user) => {
+  checkIfLoggedIn = async () => {
+    try {
+      let user = await Storage.getItem("user-google");
       if (user) {
+        console.log("User Found\n", user);
         this.props.navigation.navigate("DashboardScreen");
       } else {
-        this.props.navigation.navigate("DashboardScreen");
-        // this.props.navigation.navigate("LoginScreen");
+        this.props.navigation.navigate("LoginScreen");
       }
-    });
+    } catch (error) {
+      this.props.navigation.navigate("LoginScreen");
+    }
+    // firebase.auth().onAuthStateChanged((user) => {
+    //   if (user) {
+    //     this.props.navigation.navigate("DashboardScreen");
+    //   } else {
+    //     // this.props.navigation.navigate("DashboardScreen");
+    //     this.props.navigation.navigate("LoginScreen");
+    //   }
+    // });
   };
 
   render() {

@@ -14,14 +14,6 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "host.exp.expotest"
-    },
-    "android": {
-      "package": "host.exp.expotest",
-      "googleServicesFile": "./google-services.json"
-    }
+    "assetBundlePatterns": ["**/*"]
   }
 }
