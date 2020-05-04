@@ -39,6 +39,8 @@ export default class LoginScreen extends Component {
             "64796985151-v6k968phmbccfteg3phgvmnqrfvtvhoc.apps.googleusercontent.com",
           iosClientId:
             "64796985151-nnqp4mdutcdcs7d22lq3gue1335b4j4o.apps.googleusercontent.com",
+          webClientId:
+            "64796985151-ajudo47hee2nfqhlq5nvvccl3kcredb4.apps.googleusercontent.com",
           scopes: ["profile", "email"],
         });
 

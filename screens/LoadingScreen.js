@@ -10,17 +10,18 @@ export default class LoadingScreen extends Component {
   };
 
   checkIfLoggedIn = async () => {
-    try {
-      let user = await Storage.getItem("user-google");
-      if (user) {
-        console.log("User Found\n", user);
-        this.props.navigation.navigate("DashboardScreen");
-      } else {
-        this.props.navigation.navigate("LoginScreen");
-      }
-    } catch (error) {
-      this.props.navigation.navigate("LoginScreen");
-    }
+    this.props.navigation.navigate("DashboardScreen");
+    // try {
+    //   let user = await Storage.getItem("user-google");
+    //   if (user) {
+    //     console.log("User Found\n", user);
+    //     this.props.navigation.navigate("DashboardScreen");
+    //   } else {
+    //     this.props.navigation.navigate("LoginScreen");
+    //   }
+    // } catch (error) {
+    //   this.props.navigation.navigate("LoginScreen");
+    // }
     // firebase.auth().onAuthStateChanged((user) => {
     //   if (user) {
     //     this.props.navigation.navigate("DashboardScreen");

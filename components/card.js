@@ -44,10 +44,12 @@ export default class Card extends Component {
   componentDidMount() {
     this.interval = setInterval(() => this._updateData(), 30000);
 
-    this.registerForPushNotificationsAsync();
-    this._notificationSubscription = Notifications.addListener(
-      this._handleNotification
-    );
+    if (Platform.OS != "web") {
+      this.registerForPushNotificationsAsync();
+      this._notificationSubscription = Notifications.addListener(
+        this._handleNotification
+      );
+    }
   }
 
   componentWillUnmount() {
@@ -127,7 +129,7 @@ export default class Card extends Component {
 
       this.setState({ currentTotal, prevTotal, diff, diffPercent }, () => {
         if (this.state.diffPercent > 5) {
-          this.sendPushNotification();
+          // this.sendPushNotification();
         }
       });
     } catch (error) {
@@ -211,6 +213,21 @@ export default class Card extends Component {
               {this.state.diff} ({this.state.diffPercent}%)
             </Text>
           </View>
+
+          <View style={styles.row}>
+            <TouchableOpacity
+              style={styles.bin}
+              onPress={() => {
+                this.props.removeInvestment(this.state.symbol);
+              }}
+            >
+              <Ionicons
+                name="ios-trash"
+                color="white"
+                style={{ fontSize: 24, margin: 0.02 * width }}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* To help in visualising what comes back from notifications */}
@@ -256,5 +273,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: width * 0.12,
     marginRight: width * 0.12,
+  },
+  bin: {
+    //backgroundColor: "pink",
+    alignSelf: "flex-end",
   },
 });
